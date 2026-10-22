@@ -1,6 +1,12 @@
 # Wind Waker HD Save Editor
 
-A browser-based editor for renaming quest logs and switching them between first and second playthroughs (Hero's clothes) in **The Legend of Zelda: The Wind Waker HD** save files (`cking.sav`) for Wii U / Cemu.
+A browser-based editor for renaming quest logs and/or switching them between first and second playthroughs (Hero's clothes) in **The Legend of Zelda: The Wind Waker HD** save files (`cking.sav`) for Wii U / Cemu.
+
+**ONLINE DEMO: [wwhd-editor.nels.app](https://wwhd-editor.nels.app/)**
+
+***No registration or repo download required***. 
+Just visit the URL, upload your `cking.sav` file, download the new one, backup your old one, and replace with the new one. 
+
 
 ## Use
 
@@ -14,7 +20,7 @@ No installation or packages are required. The editor runs locally in your browse
 
 ## Safety and limitations
 
-- The original file is not changed; edits are downloaded as a separate copy. Keep a backup before replacing your game save.
+- The original file is not changed; edits are downloaded as a separate copy. Keep a backup before replacing your game save. No warranty or support is implied. 
 - The editor checks the save's size and checksums before loading, and recalculates checksums for the edited file.
 - Second-playthrough support changes the clear-count flag only. It has not been tested with every save, so try it on a backup first.
 - This is an unofficial fan tool and is not affiliated with Nintendo.
