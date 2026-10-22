@@ -15,6 +15,10 @@ No pip packages are needed.
 
 ## Usage
 
+### Web app (no install)
+
+Open `web/index.html` in a browser (or the hosted GitHub Pages version), drop in your `cking.sav`, edit, and download the modified file. Everything runs locally in your browser; nothing is uploaded. Only `web/` is needed to host it.
+
 ### GUI
 
 ```
@@ -48,5 +52,6 @@ Add `--list` to either script to just show the current state. Run a script witho
 - `wwhd_save.py` - shared save format logic (all other files need it)
 - `wwhd_gui.py` - GUI
 - `wwhd_rename.py`, `wwhd_second_quest.py` - command-line tools
+- `web/` - browser version (`index.html` + `wwhd-save.js`, a port of `wwhd_save.py`)
 
 Unofficial fan tool, not affiliated with Nintendo.

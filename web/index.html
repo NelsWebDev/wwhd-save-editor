@@ -1,0 +1,164 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>WWHD Save Editor</title>
+<style>
+  :root { --green: #2f9e44; --ink: #1f3a2a; }
+  * { box-sizing: border-box; }
+  body {
+    margin: 0; min-height: 100vh; display: flex; align-items: center; justify-content: center; padding: 24px;
+    font-family: "Trebuchet MS", system-ui, sans-serif; color: var(--ink);
+    background: linear-gradient(180deg, #8fd3f4 0%, #c9f0d0 60%, #f5e9a8 100%);
+  }
+  main {
+    width: 100%; max-width: 700px; background: rgba(255,255,255,.88); border-radius: 18px; padding: 28px;
+    box-shadow: 0 10px 30px rgba(0,0,0,.18); border: 3px solid #fff;
+  }
+  h1 { margin: 0 0 4px; font-size: 1.6rem; }
+  p.sub { margin: 0 0 20px; color: #46604f; }
+  #drop {
+    border: 3px dashed var(--green); border-radius: 14px; padding: 36px 16px; text-align: center; cursor: pointer;
+    background: #f2fbf4; transition: background .15s;
+  }
+  #drop.over { background: #d8f5df; }
+  #drop strong { display: block; font-size: 1.1rem; }
+  #editor { display: none; }
+  .row {
+    display: grid; grid-template-columns: 100px 130px minmax(0, 1fr); gap: 10px; align-items: center; padding: 12px;
+    margin-bottom: 10px; border-radius: 12px; background: #dff5e3; border: 2px solid #b6e3bf;
+  }
+  .row.second { background: #fbefc3; border-color: #ecd27a; }
+  .row label { font-weight: bold; }
+  input, select {
+    font: inherit; padding: 8px 10px; border-radius: 8px; border: 2px solid #9bbfa5; background: #fff; width: 100%; min-width: 0; text-overflow: ellipsis;
+  }
+  input:focus, select:focus { outline: none; border-color: var(--green); }
+  .actions { display: flex; gap: 10px; margin-top: 16px; }
+  button {
+    font: inherit; font-weight: bold; padding: 11px 18px; border-radius: 10px; border: 0; cursor: pointer;
+    background: var(--green); color: #fff;
+  }
+  button.secondary { background: #e4eee7; color: var(--ink); }
+  button:hover { filter: brightness(1.07); }
+  #status { margin-top: 14px; min-height: 1.4em; font-weight: bold; white-space: pre-wrap; }
+  #status.error { color: #b00020; } #status.ok { color: #1b7a1b; }
+  small { display: block; margin-top: 18px; color: #5d7466; line-height: 1.4; }
+  @media (max-width: 520px) { .row { grid-template-columns: 1fr; } }
+</style>
+</head>
+<body>
+<main>
+  <h1>Wind Waker HD Save Editor</h1>
+  <p class="sub">Rename quest logs and switch them to a second playthrough (Hero's clothes). Runs entirely in your browser; your file is never uploaded.</p>
+
+  <div id="drop" tabindex="0">
+    <strong>Drop your <code>cking.sav</code> here</strong>
+    or click to choose it
+    <input id="file" type="file" accept=".sav" hidden>
+  </div>
+
+  <div id="editor">
+    <div id="rows"></div>
+    <div class="actions">
+      <button id="download">Download edited cking.sav</button>
+      <button id="reset" class="secondary">Choose another file</button>
+    </div>
+  </div>
+  <div id="status" role="status"></div>
+
+  <small>
+    Keep your original file as a backup: your download is a modified copy. Replace <code>cking.sav</code> in the game's save
+    folder with it (close the game or emulator first), then reopen the game. Unofficial fan tool, not affiliated with Nintendo.
+  </small>
+</main>
+
+<script src="wwhd-save.js"></script>
+<script>
+  const FIRST = "First playthrough", SECOND = "Second playthrough (Hero's clothes)";
+  const $ = (id) => document.getElementById(id);
+  let save = null;
+  let fileName = "cking.sav";
+
+  function setStatus(text, kind) {
+    $("status").textContent = text;
+    $("status").className = kind || "";
+  }
+
+  function buildRows() {
+    $("rows").innerHTML = "";
+    for (let i = 0; i < WWHD.SLOT_COUNT; i++) {
+      const row = document.createElement("div");
+      row.className = "row";
+      row.innerHTML = `<label>Quest Log ${i + 1}</label>
+        <input maxlength="${WWHD.MAX_NAME}" spellcheck="false" aria-label="Name for Quest Log ${i + 1}">
+        <select aria-label="Playthrough for Quest Log ${i + 1}">
+          <option value="0">${FIRST}</option><option value="1">${SECOND}</option></select>`;
+      const [name, mode] = [row.querySelector("input"), row.querySelector("select")];
+      name.value = WWHD.readName(save, i);
+      mode.value = WWHD.isSecondQuest(save, i) ? "1" : "0";
+      const sync = () => row.classList.toggle("second", mode.value === "1");
+      mode.addEventListener("change", sync);
+      sync();
+      $("rows").appendChild(row);
+    }
+  }
+
+  async function loadFile(file) {
+    if (!file) return;
+    try {
+      save = WWHD.parseSave(await file.arrayBuffer());
+    } catch (e) {
+      setStatus(e.message, "error");
+      return;
+    }
+    fileName = file.name;
+    buildRows();
+    $("drop").style.display = "none";
+    $("editor").style.display = "block";
+    setStatus(`Loaded ${file.name}`, "ok");
+  }
+
+  function download() {
+    const rows = [...$("rows").children];
+    for (let i = 0; i < rows.length; i++) {
+      const err = WWHD.nameError(rows[i].querySelector("input").value);
+      if (err) return setStatus(`Quest Log ${i + 1}: ${err}`, "error");
+    }
+    const out = save.slice();
+    rows.forEach((row, i) => {
+      WWHD.writeName(out, i, row.querySelector("input").value);
+      WWHD.setSecondQuest(out, i, row.querySelector("select").value === "1");
+    });
+    WWHD.finalizeSave(out);
+    const a = document.createElement("a");
+    a.href = URL.createObjectURL(new Blob([out], { type: "application/octet-stream" }));
+    a.download = fileName;
+    a.click();
+    URL.revokeObjectURL(a.href);
+    setStatus("Changes have been made. Replace your cking.sav with the downloaded file, then reopen the game.", "ok");
+  }
+
+  const drop = $("drop");
+  drop.addEventListener("click", () => $("file").click());
+  drop.addEventListener("keydown", (e) => (e.key === "Enter" || e.key === " ") && $("file").click());
+  $("file").addEventListener("change", (e) => loadFile(e.target.files[0]));
+  drop.addEventListener("dragover", (e) => { e.preventDefault(); drop.classList.add("over"); });
+  drop.addEventListener("dragleave", () => drop.classList.remove("over"));
+  drop.addEventListener("drop", (e) => {
+    e.preventDefault();
+    drop.classList.remove("over");
+    loadFile(e.dataTransfer.files[0]);
+  });
+  $("download").addEventListener("click", download);
+  $("reset").addEventListener("click", () => {
+    save = null;
+    $("file").value = "";
+    $("editor").style.display = "none";
+    drop.style.display = "";
+    setStatus("");
+  });
+</script>
+</body>
+</html>
