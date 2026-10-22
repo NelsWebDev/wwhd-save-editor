@@ -10,11 +10,18 @@ Just visit the URL, upload your `cking.sav` file, download the new one, backup y
 
 ## Use
 
-1. Open [`index.html`](./index.html) in a modern browser.
-2. Drop your `cking.sav` file onto the page, or click the file chooser.
-3. Edit the names and playthrough settings for the three quest logs. Names must be 1-8 printable ASCII characters. The displayed location is informational.
-4. Click **Download edited cking.sav** to save the modified copy.
-5. After keeping a backup, replace the save in the game's save folder with the downloaded file. Close the game or emulator before replacing it, then reopen the game.
+1. Open the [online editor](https://wwhd-editor.nels.app/) or open [`index.html`](./index.html) in a modern browser.
+2. Locate the game's save folder and choose **`cking.sav`**. Do not choose one of the similarly named `cking_pic2_*.sav` files or `cking_playlog.sav`.
+
+   ![Select cking.sav from the game's save folder](./media/file-to-select.png)
+
+3. Drop `cking.sav` onto the editor, or click the file chooser and select it. The editor runs locally in your browser; the save is not uploaded.
+4. Edit the names and playthrough settings for the three quest logs. Names must be 1-8 printable ASCII characters. The displayed location is informational.
+
+   ![Quest log name and playthrough settings in the editor](./media/options-preview.png)
+
+5. Click **Download edited cking.sav** to save the modified copy.
+6. Keep a backup of the original. Close the game or emulator, replace `cking.sav` in the game's save folder with the downloaded file, then reopen the game.
 
 No installation or packages are required. The editor runs locally in your browser; save data is not uploaded. To host the app, serve `index.html` and `wwhd-save.js` together from the same directory.
 
