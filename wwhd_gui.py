@@ -1,30 +1,15 @@
 #!/usr/bin/env python3
 """GUI to rename quest logs and set first/second playthrough in Wind Waker HD's cking.sav.
 
-Needs wwhd_rename.py and wwhd_second_quest.py in the same folder.
+Needs wwhd_save.py in the same folder.
 """
-import shutil
-import struct
-import time
 import tkinter as tk
-from pathlib import Path
 from tkinter import filedialog, ttk
 
-from wwhd_rename import (MAX_NAME, MIN_SIZE, SLOT_COUNT, SLOT_SIZE, block_crc, crc_ok, read_name, slots_ok,
-                         validate_name, write_name)
-from wwhd_second_quest import CLEAR_COUNT, write_slot_checksum
+from wwhd_save import (MAX_NAME, SLOT_COUNT, is_second_quest, load_save, read_name, set_second_quest,
+                       validate_name, write_name, write_save)
 
 FIRST, SECOND = "First playthrough", "Second playthrough (Hero's clothes)"
-
-
-def load_save(folder):
-    path = Path(folder) / "cking.sav"
-    if not path.is_file():
-        raise ValueError(f"No cking.sav found in:\n{folder}")
-    buf = bytearray(path.read_bytes())
-    if len(buf) < MIN_SIZE or not slots_ok(buf) or not crc_ok(buf):
-        raise ValueError("This doesn't look like a valid WWHD cking.sav (size/checksum mismatch).")
-    return path, buf
 
 
 class App(tk.Tk):
@@ -83,19 +68,19 @@ class App(tk.Tk):
             self.load()
 
     def load(self):
-        folder = self.folder_var.get().strip().strip("'\"")
+        folder = self.folder_var.get().strip()
         self.set_editable(False)
         if not folder:
             self.set_status("Enter or browse to a save folder first.", "error")
             return
         try:
-            self.path, self.buf = load_save(Path(folder).expanduser())
+            self.path, self.buf = load_save(folder)
         except (ValueError, OSError) as e:
             self.set_status(str(e), "error")
             return
         for i in range(SLOT_COUNT):
             self.name_vars[i].set(read_name(self.buf, i))
-            self.mode_vars[i].set(SECOND if self.buf[i * SLOT_SIZE + CLEAR_COUNT] else FIRST)
+            self.mode_vars[i].set(SECOND if is_second_quest(self.buf, i) else FIRST)
         self.set_editable(True)
         self.set_status(f"Loaded {self.path}", "ok")
 
@@ -106,16 +91,10 @@ class App(tk.Tk):
             self.set_status(str(e), "error")
             return
         try:
-            backup = self.path.with_name(f"{self.path.name}.bak-{time.strftime('%Y%m%d-%H%M%S')}")
-            shutil.copy2(self.path, backup)
-            buf = self.buf
             for i in range(SLOT_COUNT):
-                write_name(buf, i, names[i])
-                off = i * SLOT_SIZE + CLEAR_COUNT
-                buf[off] = (buf[off] or 1) if self.mode_vars[i].get() == SECOND else 0
-                write_slot_checksum(buf, i)
-            struct.pack_into(">I", buf, len(buf) - 4, block_crc(buf))
-            self.path.write_bytes(buf)
+                write_name(self.buf, i, names[i])
+                set_second_quest(self.buf, i, self.mode_vars[i].get() == SECOND)
+            backup = write_save(self.path, self.buf)
         except OSError as e:
             self.set_status(f"Save failed: {e}", "error")
             return

@@ -2,8 +2,8 @@
 """Mark a quest log in Wind Waker HD's cking.sav as a Second Quest (Hero's clothes) playthrough.
 
 Each 0xA94-byte slot holds a dSv_player_info_c (tww decomp) at slot offset 0x143. Its
-mClearCount byte (info + 0x58 = slot + 0x19B) is 0 for a normal game and >= 1 for a second quest.
-After changing it, the slot's checksum pair (sum of bytes, sum of inverted bytes) is rewritten.
+mClearCount byte (slot + 0x19B) is 0 for a normal game and >= 1 for a second quest.
+The slot's checksum pair is rewritten afterwards.
 
 Usage:
   python3 wwhd_second_quest.py                      interactive
@@ -13,22 +13,9 @@ Usage:
   python3 wwhd_second_quest.py cking.sav --list
 """
 import argparse
-import shutil
-import struct
 import sys
-import time
-from pathlib import Path
 
-from wwhd_rename import DATA_SIZE, MIN_SIZE, SLOT_COUNT, SLOT_SIZE, crc_ok, read_name, slots_ok
-
-CLEAR_COUNT = 0x19B
-
-
-def write_slot_checksum(buf, slot):
-    o = slot * SLOT_SIZE
-    s = sum(buf[o:o + DATA_SIZE]) & 0xFFFFFFFF
-    c = sum(~b & 0xFFFFFFFF for b in buf[o:o + DATA_SIZE]) & 0xFFFFFFFF
-    struct.pack_into(">II", buf, o + DATA_SIZE, s, c)
+from wwhd_save import SLOT_COUNT, is_second_quest, load_save, read_name, set_second_quest, write_save
 
 
 def main():
@@ -39,17 +26,13 @@ def main():
     ap.add_argument("--list", action="store_true", help="only list the quest logs")
     args = ap.parse_args()
 
-    path = Path(args.file or input("Path to cking.sav: ").strip().strip("'\"")).expanduser()
-    if path.is_dir():
-        path = path / "cking.sav"
-    if not path.is_file():
-        sys.exit(f"File not found: {path}")
-    buf = bytearray(path.read_bytes())
-    if len(buf) < MIN_SIZE or not slots_ok(buf) or not crc_ok(buf):
-        sys.exit("This doesn't look like a WWHD cking.sav (size/checksum mismatch). Nothing changed.")
+    try:
+        path, buf = load_save(args.file or input("Path to cking.sav: "))
+    except ValueError as e:
+        sys.exit(f"{e} Nothing changed.")
 
     for i in range(SLOT_COUNT):
-        kind = "second quest" if buf[i * SLOT_SIZE + CLEAR_COUNT] else "normal"
+        kind = "second quest" if is_second_quest(buf, i) else "normal"
         print(f"  Quest Log {i + 1}: {read_name(buf, i)!r} ({kind})")
     if args.list:
         return
@@ -58,11 +41,8 @@ def main():
     if not 1 <= slot <= SLOT_COUNT:
         sys.exit("Quest log must be 1-3.")
 
-    backup = path.with_name(f"{path.name}.bak-{time.strftime('%Y%m%d-%H%M%S')}")
-    shutil.copy2(path, backup)
-    buf[(slot - 1) * SLOT_SIZE + CLEAR_COUNT] = 0 if args.normal else 1
-    write_slot_checksum(buf, slot - 1)
-    path.write_bytes(buf)
+    set_second_quest(buf, slot - 1, not args.normal)
+    backup = write_save(path, buf)
     print(f"Quest Log {slot} is now {'a normal' if args.normal else 'a second'} quest. Backup: {backup}")
 
 
