@@ -30,6 +30,7 @@
     margin-bottom: 10px; border-radius: 12px; background: #dff5e3; border: 2px solid #b6e3bf;
   }
   .row.second { background: #fbefc3; border-color: #ecd27a; }
+  .loc { grid-column: 1 / -1; font-size: .9rem; color: #4f6b59; }
   .row label { font-weight: bold; }
   input, select {
     font: inherit; padding: 8px 10px; border-radius: 8px; border: 2px solid #9bbfa5; background: #fff; width: 100%; min-width: 0; text-overflow: ellipsis;
@@ -94,8 +95,10 @@
       row.innerHTML = `<label>Quest Log ${i + 1}</label>
         <input maxlength="${WWHD.MAX_NAME}" spellcheck="false" aria-label="Name for Quest Log ${i + 1}">
         <select aria-label="Playthrough for Quest Log ${i + 1}">
-          <option value="0">${FIRST}</option><option value="1">${SECOND}</option></select>`;
+          <option value="0">${FIRST}</option><option value="1">${SECOND}</option></select>
+        <div class="loc"></div>`;
       const [name, mode] = [row.querySelector("input"), row.querySelector("select")];
+      row.querySelector(".loc").textContent = `Location: ${WWHD.readLocation(save, i)}`;
       name.value = WWHD.readName(save, i);
       mode.value = WWHD.isSecondQuest(save, i) ? "1" : "0";
       const sync = () => row.classList.toggle("second", mode.value === "1");

@@ -39,6 +39,33 @@
     for (let i = 0; i < NAME_UNITS; i++) dv.setUint16(o + i * 2, i < name.length ? name.charCodeAt(i) : 0);
   }
 
+  // Each slot stores its return place (dSv_player_return_place_c) at slot + 0x30: 8-byte stage name, then room number.
+  const RETURN_PLACE = 0x30;
+  const SEA_ROOMS = ["Forsaken Fortress", "Star Island", "Northern Fairy Island", "Gale Isle", "Crescent Moon Island",
+    "Seven-Star Isles", "Overlook Island", "Four-Eye Reef", "Mother & Child Isles", "Spectacle Island",
+    "Windfall Island", "Pawprint Isle", "Dragon Roost Island", "Flight Control Platform", "Western Fairy Island",
+    "Rock Spire Isle", "Tingle Island", "Northern Triangle Island", "Eastern Fairy Island", "Fire Mountain",
+    "Star Belt Archipelago", "Three-Eye Reef", "Greatfish Isle", "Cyclops Reef", "Six-Eye Reef", "Tower of the Gods",
+    "Eastern Triangle Island", "Thorned Fairy Island", "Needle Rock Isle", "Islet of Steel", "Stone Watcher Island",
+    "Southern Triangle Island", "Private Oasis", "Bomb Island", "Bird's Peak Rock", "Diamond Steppe Island",
+    "Five-Eye Reef", "Shark Island", "Southern Fairy Island", "Ice Ring Isle", "Forest Haven", "Cliff Plateau Isles",
+    "Horseshoe Island", "Outset Island", "Headstone Island", "Two-Eye Reef", "Angular Isles", "Boating Course",
+    "Five-Star Isles"];
+  const STAGES = { M_NewD2: "Dragon Roost Cavern", M_DragB: "Dragon Roost Cavern", kindan: "Forbidden Woods",
+    kinBOSS: "Forbidden Woods", Siren: "Tower of the Gods", SirenB: "Tower of the Gods", M_Dai: "Earth Temple",
+    M_DaiB: "Earth Temple", kaze: "Wind Temple", kazeB: "Wind Temple", Hyroom: "Hyrule Castle",
+    Hyrule: "Hyrule Castle" };
+
+  // Best-effort display name for where the slot will load; unknown stages fall back to the raw stage name.
+  function readLocation(buf, slot) {
+    const o = slot * SLOT_SIZE + RETURN_PLACE;
+    let stage = "";
+    for (let i = 0; i < 8 && buf[o + i]; i++) stage += String.fromCharCode(buf[o + i]);
+    const room = buf[o + 8];
+    if (stage === "sea" && room >= 1 && room <= SEA_ROOMS.length) return SEA_ROOMS[room - 1];
+    return STAGES[stage] || (stage ? `${stage} (room ${room})` : "Unknown");
+  }
+
   // Returns an error message, or null when valid.
   function nameError(name) {
     if (name.length < 1 || name.length > MAX_NAME) return `Name must be 1-${MAX_NAME} characters.`;
@@ -105,7 +132,7 @@
     return buf;
   }
 
-  const api = { SLOT_COUNT, MAX_NAME, readName, writeName, nameError, isSecondQuest, setSecondQuest,
+  const api = { SLOT_COUNT, MAX_NAME, readName, writeName, readLocation, nameError, isSecondQuest, setSecondQuest,
                 parseSave, finalizeSave, slotsOk, crcOk };
   if (typeof module !== "undefined") module.exports = api;
   else root.WWHD = api;
