@@ -78,9 +78,9 @@ def slots_ok(buf):
 
 def validate_name(name):
     if not 1 <= len(name) <= MAX_NAME:
-        raise ValueError(f"name must be 1-{MAX_NAME} characters")
+        raise ValueError(f"Name must be 1-{MAX_NAME} characters")
     if not all(32 <= ord(ch) < 127 for ch in name):
-        raise ValueError("name must be printable ASCII")
+        raise ValueError("Name must be printable ASCII")
     return name
 
 
