@@ -13,7 +13,7 @@
     background: linear-gradient(180deg, #8fd3f4 0%, #c9f0d0 60%, #f5e9a8 100%);
   }
   main {
-    width: 100%; max-width: 700px; background: rgba(255,255,255,.88); border-radius: 18px; padding: 28px;
+    width: 100%; max-width: 980px; background: rgba(255,255,255,.9); border-radius: 18px; padding: 28px;
     box-shadow: 0 10px 30px rgba(0,0,0,.18); border: 3px solid #fff;
   }
   h1 { margin: 0 0 4px; font-size: 1.6rem; }
@@ -25,13 +25,25 @@
   #drop.over { background: #d8f5df; }
   #drop strong { display: block; font-size: 1.1rem; }
   #editor { display: none; }
-  .row {
-    display: grid; grid-template-columns: 100px 130px minmax(0, 1fr); gap: 10px; align-items: center; padding: 12px;
-    margin-bottom: 10px; border-radius: 12px; background: #dff5e3; border: 2px solid #b6e3bf;
-  }
-  .row.second { background: #fbefc3; border-color: #ecd27a; }
+  .slot-card { padding: 18px; margin: 16px 0; border-radius: 14px; background: #dff5e3; border: 2px solid #b6e3bf; }
+  .slot-card.second { background: #fbefc3; border-color: #ecd27a; }
+  .slot-top { display: grid; grid-template-columns: auto minmax(120px, 1fr) minmax(180px, 1fr); gap: 10px; align-items: center; }
+  .slot-top label { font-weight: bold; }
   .loc { grid-column: 1 / -1; font-size: .9rem; color: #4f6b59; }
-  .row label { font-weight: bold; }
+  .edit-grid { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 12px; margin-top: 14px; }
+  fieldset { min-width: 0; padding: 12px; border: 1px solid #9bbfa5; border-radius: 10px; }
+  legend { padding: 0 5px; font-weight: bold; }
+  .fields { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 10px; }
+  .control label { display: block; margin-bottom: 4px; font-size: .9rem; }
+  .map { margin-top: 14px; padding: 12px; border: 1px solid #9bbfa5; border-radius: 10px; background: rgba(255,255,255,.35); }
+  .map summary { cursor: pointer; font-weight: bold; }
+  .map-actions { display: flex; flex-wrap: wrap; gap: 8px; margin: 12px 0; }
+  .map-actions button { padding: 7px 10px; font-size: .9rem; }
+  .map-grid { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 5px 10px; }
+  .island { display: flex; justify-content: space-between; align-items: center; gap: 6px; padding: 5px; border-radius: 6px; background: rgba(255,255,255,.55); font-size: .85rem; }
+  .island-controls { display: flex; flex-shrink: 0; gap: 5px; }
+  .island-controls label { display: inline-flex; align-items: center; gap: 2px; font-size: .75rem; }
+  .island-controls input { width: auto; margin: 0; padding: 0; border: 0; background: transparent; accent-color: var(--green); }
   input, select {
     font: inherit; padding: 8px 10px; border-radius: 8px; border: 2px solid #9bbfa5; background: #fff; width: 100%; min-width: 0; text-overflow: ellipsis;
   }
@@ -46,13 +58,18 @@
   #status { margin-top: 14px; min-height: 1.4em; font-weight: bold; white-space: pre-wrap; }
   #status.error { color: #b00020; } #status.ok { color: #1b7a1b; }
   small { display: block; margin-top: 18px; color: #5d7466; line-height: 1.4; }
-  @media (max-width: 520px) { .row { grid-template-columns: 1fr; } }
+  @media (max-width: 680px) {
+    main { padding: 18px; }
+    .slot-top, .edit-grid { grid-template-columns: 1fr; }
+    .map-grid { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+  }
+  @media (max-width: 420px) { .fields, .map-grid { grid-template-columns: 1fr; } }
 </style>
 </head>
 <body>
 <main>
   <h1>Wind Waker HD Save Editor</h1>
-  <p class="sub">Rename quest logs and switch them to a second playthrough (Hero's clothes). Runs entirely in your browser; your file is never uploaded.</p>
+  <p class="sub">Edit quest logs, health, resources, and sea chart discoveries. Runs entirely in your browser; your file is never uploaded.</p>
 
   <div id="drop" tabindex="0">
     <strong>Drop your <code>cking.sav</code> here</strong>
@@ -90,19 +107,106 @@
   function buildRows() {
     $("rows").innerHTML = "";
     for (let i = 0; i < WWHD.SLOT_COUNT; i++) {
-      const row = document.createElement("div");
-      row.className = "row";
-      row.innerHTML = `<label>Quest Log ${i + 1}</label>
-        <input maxlength="${WWHD.MAX_NAME}" spellcheck="false" aria-label="Name for Quest Log ${i + 1}">
-        <select aria-label="Playthrough for Quest Log ${i + 1}">
+      const row = document.createElement("section");
+      row.className = "slot-card";
+      row.innerHTML = `<div class="slot-top">
+        <label>Quest Log ${i + 1}</label>
+        <input data-field="name" maxlength="${WWHD.MAX_NAME}" spellcheck="false" aria-label="Name for Quest Log ${i + 1}">
+        <select data-field="mode" aria-label="Playthrough for Quest Log ${i + 1}">
           <option value="0">${FIRST}</option><option value="1">${SECOND}</option></select>
-        <div class="loc"></div>`;
-      const [name, mode] = [row.querySelector("input"), row.querySelector("select")];
+        <div class="loc"></div>
+      </div>
+      <div class="edit-grid">
+        <fieldset><legend>Health</legend><div class="fields">
+          <div class="control"><label>Maximum health (hearts, quarter-heart steps)</label><input data-field="maxHearts" aria-label="Maximum health in hearts, quarter-heart steps" type="number" min="0" max="${WWHD.MAX_HEARTS}" step="0.25"></div>
+          <div class="control"><label>Current health (hearts, quarter-heart steps)</label><input data-field="currentHearts" aria-label="Current health in hearts, quarter-heart steps" type="number" min="0" max="${WWHD.MAX_HEARTS}" step="0.25"></div>
+        </div></fieldset>
+        <fieldset><legend>Rupees</legend><div class="fields">
+          <div class="control"><label>Wallet tier</label><select data-field="wallet" aria-label="Wallet tier"><option value="0">500 rupees</option><option value="1">1,000 rupees</option><option value="2">5,000 rupees</option></select></div>
+          <div class="control"><label>Current rupees</label><input data-field="rupees" aria-label="Current rupees" type="number" min="0" step="1"></div>
+        </div></fieldset>
+        <fieldset><legend>Magic</legend><div class="fields">
+          <div class="control"><label>Maximum magic</label><input data-field="maxMagic" aria-label="Maximum magic" type="number" min="0" max="32" step="1"></div>
+          <div class="control"><label>Current magic</label><input data-field="magic" aria-label="Current magic" type="number" min="0" max="32" step="1"></div>
+        </div></fieldset>
+        <fieldset><legend>Arrows and bombs</legend><div class="fields">
+          <div class="control"><label>Arrow capacity</label><input data-field="maxArrows" aria-label="Arrow capacity" type="number" min="0" max="99" step="1"></div>
+          <div class="control"><label>Arrows carried</label><input data-field="arrows" aria-label="Arrows carried" type="number" min="0" max="99" step="1"></div>
+          <div class="control"><label>Bomb capacity</label><input data-field="maxBombs" aria-label="Bomb capacity" type="number" min="0" max="99" step="1"></div>
+          <div class="control"><label>Bombs carried</label><input data-field="bombs" aria-label="Bombs carried" type="number" min="0" max="99" step="1"></div>
+        </div></fieldset>
+      </div>
+      <details class="map">
+        <summary>Sea chart locations <span data-field="mapCount"></span></summary>
+        <p>Toggle whether each island has been visited or charted.</p>
+        <div class="map-actions">
+          <button type="button" class="secondary" data-action="visit-all">Mark all visited</button>
+          <button type="button" class="secondary" data-action="chart-all">Mark all charted</button>
+          <button type="button" class="secondary" data-action="clear-map">Clear all</button>
+        </div>
+        <div class="map-grid"></div>
+      </details>`;
+      const field = (key) => row.querySelector(`[data-field="${key}"]`);
+      const stats = WWHD.readStats(save, i);
+      field("name").value = WWHD.readName(save, i);
+      field("mode").value = WWHD.isSecondQuest(save, i) ? "1" : "0";
+      field("maxHearts").value = stats.maxHearts;
+      field("currentHearts").value = stats.currentHearts;
+      if (stats.wallet > 2) {
+        const unknownWallet = document.createElement("option");
+        unknownWallet.value = stats.wallet;
+        unknownWallet.textContent = `Unknown wallet tier (${stats.wallet}) - preserve`;
+        field("wallet").appendChild(unknownWallet);
+      }
+      field("wallet").value = stats.wallet;
+      field("rupees").value = stats.rupees;
+      field("maxMagic").value = stats.maxMagic;
+      field("magic").value = stats.magic;
+      field("maxArrows").value = stats.maxArrows;
+      field("arrows").value = stats.arrows;
+      field("maxBombs").value = stats.maxBombs;
+      field("bombs").value = stats.bombs;
+      field("rupees").max = WWHD.MAX_RUPEES[stats.wallet] || Math.max(WWHD.MAX_RUPEES[2], stats.rupees);
       row.querySelector(".loc").textContent = `Location: ${WWHD.readLocation(save, i)}`;
-      name.value = WWHD.readName(save, i);
-      mode.value = WWHD.isSecondQuest(save, i) ? "1" : "0";
-      const sync = () => row.classList.toggle("second", mode.value === "1");
-      mode.addEventListener("change", sync);
+
+      const mapGrid = row.querySelector(".map-grid");
+      WWHD.SEA_ISLANDS.forEach((island, index) => {
+        const item = document.createElement("div");
+        item.className = "island";
+        item.innerHTML = `<span></span><span class="island-controls">
+          <label title="Visited"><input type="checkbox" data-visited="${index}"> Visited</label>
+          <label title="Charted"><input type="checkbox" data-charted="${index}"> Charted</label>
+        </span>`;
+        item.querySelector("span").textContent = island;
+        item.querySelector(`[data-visited="${index}"]`).checked = WWHD.isIslandVisited(save, i, index);
+        item.querySelector(`[data-charted="${index}"]`).checked = WWHD.isIslandCharted(save, i, index);
+        mapGrid.appendChild(item);
+      });
+      const updateMapCount = () => {
+        const visited = row.querySelectorAll("[data-visited]:checked").length;
+        const charted = row.querySelectorAll("[data-charted]:checked").length;
+        field("mapCount").textContent = `(${visited}/${WWHD.SEA_ISLANDS.length} visited, ${charted}/${WWHD.SEA_ISLANDS.length} charted)`;
+      };
+      const sync = () => row.classList.toggle("second", field("mode").value === "1");
+      field("mode").addEventListener("change", sync);
+      field("wallet").addEventListener("change", () => {
+        const tier = Number(field("wallet").value);
+        field("rupees").max = WWHD.MAX_RUPEES[tier] || Math.max(WWHD.MAX_RUPEES[2], stats.rupees);
+      });
+      row.querySelectorAll("[data-visited], [data-charted]").forEach((checkbox) => checkbox.addEventListener("change", updateMapCount));
+      row.querySelector('[data-action="visit-all"]').addEventListener("click", () => {
+        row.querySelectorAll("[data-visited]").forEach((checkbox) => { checkbox.checked = true; });
+        updateMapCount();
+      });
+      row.querySelector('[data-action="chart-all"]').addEventListener("click", () => {
+        row.querySelectorAll("[data-charted]").forEach((checkbox) => { checkbox.checked = true; });
+        updateMapCount();
+      });
+      row.querySelector('[data-action="clear-map"]').addEventListener("click", () => {
+        row.querySelectorAll("[data-visited], [data-charted]").forEach((checkbox) => { checkbox.checked = false; });
+        updateMapCount();
+      });
+      updateMapCount();
       sync();
       $("rows").appendChild(row);
     }
@@ -126,14 +230,35 @@
   function download() {
     const rows = [...$("rows").children];
     for (let i = 0; i < rows.length; i++) {
-      const err = WWHD.nameError(rows[i].querySelector("input").value);
+      const err = WWHD.nameError(rows[i].querySelector('[data-field="name"]').value);
       if (err) return setStatus(`Quest Log ${i + 1}: ${err}`, "error");
     }
     const out = save.slice();
-    rows.forEach((row, i) => {
-      WWHD.writeName(out, i, row.querySelector("input").value);
-      WWHD.setSecondQuest(out, i, row.querySelector("select").value === "1");
-    });
+    try {
+      rows.forEach((row, i) => {
+        const field = (key) => row.querySelector(`[data-field="${key}"]`).value;
+        const original = WWHD.readStats(save, i);
+        WWHD.writeName(out, i, field("name"));
+        WWHD.setSecondQuest(out, i, field("mode") === "1");
+        if (Number(field("currentHearts")) !== original.currentHearts || Number(field("maxHearts")) !== original.maxHearts)
+          WWHD.setHealth(out, i, field("currentHearts"), field("maxHearts"));
+        if (Number(field("wallet")) !== original.wallet || Number(field("rupees")) !== original.rupees)
+          WWHD.setWallet(out, i, field("wallet"), field("rupees"));
+        if (Number(field("magic")) !== original.magic || Number(field("maxMagic")) !== original.maxMagic)
+          WWHD.setMagic(out, i, field("magic"), field("maxMagic"));
+        if (Number(field("arrows")) !== original.arrows || Number(field("maxArrows")) !== original.maxArrows ||
+            Number(field("bombs")) !== original.bombs || Number(field("maxBombs")) !== original.maxBombs)
+          WWHD.setAmmo(out, i, field("arrows"), field("maxArrows"), field("bombs"), field("maxBombs"));
+        row.querySelectorAll("[data-visited]").forEach((checkbox) => {
+          WWHD.setIslandVisited(out, i, Number(checkbox.dataset.visited), checkbox.checked);
+        });
+        row.querySelectorAll("[data-charted]").forEach((checkbox) => {
+          WWHD.setIslandCharted(out, i, Number(checkbox.dataset.charted), checkbox.checked);
+        });
+      });
+    } catch (e) {
+      return setStatus(e.message, "error");
+    }
     WWHD.finalizeSave(out);
     const a = document.createElement("a");
     a.href = URL.createObjectURL(new Blob([out], { type: "application/octet-stream" }));
