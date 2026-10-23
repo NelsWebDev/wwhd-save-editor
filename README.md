@@ -28,7 +28,7 @@ Run the save-format tests with `node --test wwhd-save.test.js`.
 
 - The original file is not changed; edits are downloaded as a separate copy. Keep a backup before replacing your game save. No warranty or support is implied. 
 - The editor checks the save's size and checksums before loading, and recalculates checksums for the edited file.
-- Sea chart editing covers the 49 island visit flags and their chart-completion flags. It does not add chart items to inventory or edit story, dungeon, pictograph, or playlog data.
+- Sea chart editing covers the 49 island visit flags and the HD per-island chart flags. Forsaken Fortress, Windfall Island and Outset Island have no chart, so that flag is locked. Only checkboxes you change are written. It does not add chart items to inventory or edit story, dungeon, pictograph, or playlog data.
 - Second-playthrough support changes the clear-count flag only. It has not been tested with every save, so try it on a backup first.
 - Save-field layout references: [ZeldaWWHDRecomp save tools](https://github.com/ZeldaWWHDRecomp/ZeldaWWHDRecomp/tree/main/tools/savegame).
 - This is an unofficial fan tool and is not affiliated with Nintendo.

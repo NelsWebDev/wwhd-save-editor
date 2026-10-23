@@ -58,19 +58,28 @@ test("reads and changes visit and chart flags for all 49 islands", () => {
 
   for (let island = 0; island < WWHD.SEA_ISLANDS.length; island++) {
     WWHD.setIslandVisited(save, 2, island, true);
-    WWHD.setIslandCharted(save, 2, island, true);
+    if (WWHD.hasChart(island)) WWHD.setIslandCharted(save, 2, island, true);
   }
   assert.ok(WWHD.SEA_ISLANDS.every((_, island) =>
-    WWHD.isIslandVisited(save, 2, island) && WWHD.isIslandCharted(save, 2, island)));
+    WWHD.isIslandVisited(save, 2, island) && WWHD.isIslandCharted(save, 2, island) === WWHD.hasChart(island)));
+  assert.throws(() => WWHD.setIslandCharted(save, 2, 10, true), /no sea chart/);
 
-  WWHD.setIslandVisited(save, 2, 0, false);
-  WWHD.setIslandCharted(save, 2, 0, false);
-  assert.equal(WWHD.isIslandVisited(save, 2, 0), false);
-  assert.equal(WWHD.isIslandCharted(save, 2, 0), false);
-  assert.equal(WWHD.isIslandVisited(save, 2, 1), true);
-  assert.equal(WWHD.isIslandCharted(save, 2, 1), true);
+  WWHD.setIslandVisited(save, 2, 1, false);
+  WWHD.setIslandCharted(save, 2, 1, false);
+  assert.equal(WWHD.isIslandVisited(save, 2, 1), false);
+  assert.equal(WWHD.isIslandCharted(save, 2, 1), false);
+  assert.equal(WWHD.isIslandVisited(save, 2, 2), true);
+  assert.equal(WWHD.isIslandCharted(save, 2, 2), true);
   WWHD.finalizeSave(save);
   assert.equal(WWHD.parseSave(save.buffer).length, save.length);
+});
+
+test("chart edits touch only the HD chart flags, never the return location", () => {
+  const save = makeSave();
+  const before = save.slice();
+  WWHD.setIslandCharted(save, 0, 40, true);
+  const changed = [...save.keys()].filter((i) => save[i] !== before[i]);
+  assert.deepEqual(changed, [0x206a + 24 + 40 * 4 + 3]);
 });
 
 test("rejects inconsistent or out-of-range field edits", () => {

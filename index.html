@@ -179,7 +179,12 @@
         </span>`;
         item.querySelector("span").textContent = island;
         item.querySelector(`[data-visited="${index}"]`).checked = WWHD.isIslandVisited(save, i, index);
-        item.querySelector(`[data-charted="${index}"]`).checked = WWHD.isIslandCharted(save, i, index);
+        const charted = item.querySelector(`[data-charted="${index}"]`);
+        charted.checked = WWHD.isIslandCharted(save, i, index);
+        if (!WWHD.hasChart(index)) {
+          charted.disabled = true;
+          charted.parentElement.title = "This location has no sea chart";
+        }
         mapGrid.appendChild(item);
       });
       const updateMapCount = () => {
@@ -199,7 +204,7 @@
         updateMapCount();
       });
       row.querySelector('[data-action="chart-all"]').addEventListener("click", () => {
-        row.querySelectorAll("[data-charted]").forEach((checkbox) => { checkbox.checked = true; });
+        row.querySelectorAll("[data-charted]:not(:disabled)").forEach((checkbox) => { checkbox.checked = true; });
         updateMapCount();
       });
       row.querySelector('[data-action="clear-map"]').addEventListener("click", () => {
@@ -250,10 +255,14 @@
             Number(field("bombs")) !== original.bombs || Number(field("maxBombs")) !== original.maxBombs)
           WWHD.setAmmo(out, i, field("arrows"), field("maxArrows"), field("bombs"), field("maxBombs"));
         row.querySelectorAll("[data-visited]").forEach((checkbox) => {
-          WWHD.setIslandVisited(out, i, Number(checkbox.dataset.visited), checkbox.checked);
+          const island = Number(checkbox.dataset.visited);
+          if (checkbox.checked !== WWHD.isIslandVisited(save, i, island))
+            WWHD.setIslandVisited(out, i, island, checkbox.checked);
         });
         row.querySelectorAll("[data-charted]").forEach((checkbox) => {
-          WWHD.setIslandCharted(out, i, Number(checkbox.dataset.charted), checkbox.checked);
+          const island = Number(checkbox.dataset.charted);
+          if (checkbox.checked !== WWHD.isIslandCharted(save, i, island))
+            WWHD.setIslandCharted(out, i, island, checkbox.checked);
         });
       });
     } catch (e) {

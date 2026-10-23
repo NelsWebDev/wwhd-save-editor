@@ -6,7 +6,10 @@
   const MIN_SIZE = NAME_TABLE + NAME_STRIDE * SLOT_COUNT;
   const HEALTH = 0, RUPEES = 4, WALLET = 0x12, MAX_MAGIC = 0x13, MAGIC = 0x14;
   const ARROWS = 0x69, BOMBS = 0x6a, MAX_ARROWS = 0x6f, MAX_BOMBS = 0x70;
-  const MAP_COMPLETE = 0xef, MAP_ISLANDS = 0xff;
+  const MAP_ISLANDS = 0xff;
+  const HD_MAP = NAME_TABLE + NAME_STRIDE * SLOT_COUNT, HD_MAP_SIZE = 220, HD_MAP_FLAGS = 24;
+  // Forsaken Fortress, Windfall Island and Outset Island have no chart; the game keeps their flag at 0.
+  const NO_CHART = [0, 10, 43];
   const MAX_HEARTS = 20, MAX_RUPEES = [500, 1000, 5000];
   const SEA_ISLANDS = ["Forsaken Fortress", "Star Island", "Northern Fairy Island", "Gale Isle", "Crescent Moon Island",
     "Seven-Star Isles", "Overlook Island", "Four-Eye Reef", "Mother & Child Isles", "Spectacle Island",
@@ -163,19 +166,30 @@
     buf[o] = enabled ? buf[o] | 1 : buf[o] & 0xfe;
   }
 
-  function isIslandCharted(buf, slot, island) {
+  // Chart state lives in the HD-only extra block, outside the per-slot data.
+  function chartOffset(buf, slot, island) {
     assertIsland(island);
-    const wordOffset = MAP_COMPLETE + (island >>> 5) * 4;
-    const word = view(buf).getUint32(slot * SLOT_SIZE + wordOffset);
-    return (word & (1 << (island & 31))) !== 0;
+    const o = HD_MAP + slot * HD_MAP_SIZE + HD_MAP_FLAGS + island * 4;
+    if (buf.length < o + 4) throw new Error("Save file is too small to hold sea chart data.");
+    return o;
+  }
+
+  function hasChart(island) {
+    assertIsland(island);
+    return !NO_CHART.includes(island);
+  }
+
+  function isIslandCharted(buf, slot, island) {
+    return view(buf).getUint32(chartOffset(buf, slot, island)) !== 0;
   }
 
   function setIslandCharted(buf, slot, island, enabled) {
-    assertIsland(island);
-    const wordOffset = MAP_COMPLETE + (island >>> 5) * 4;
-    const dv = view(buf), o = slot * SLOT_SIZE + wordOffset, mask = 1 << (island & 31);
-    const word = dv.getUint32(o);
-    dv.setUint32(o, enabled ? word | mask : word & ~mask);
+    const o = chartOffset(buf, slot, island);
+    if (!hasChart(island)) {
+      if (enabled) throw new Error(`${SEA_ISLANDS[island]} has no sea chart.`);
+      return;
+    }
+    view(buf).setUint32(o, enabled ? 1 : 0);
   }
 
   function slotChecksums(buf, slot) {
@@ -231,7 +245,7 @@
 
   const api = { SLOT_COUNT, MAX_NAME, MAX_HEARTS, MAX_RUPEES, SEA_ISLANDS, readName, writeName, readLocation, nameError,
                 isSecondQuest, setSecondQuest, readStats, setHealth, setWallet, setMagic, setAmmo,
-                isIslandVisited, setIslandVisited, isIslandCharted, setIslandCharted,
+                isIslandVisited, setIslandVisited, isIslandCharted, setIslandCharted, hasChart,
                 parseSave, finalizeSave, slotsOk, crcOk };
   if (typeof module !== "undefined") module.exports = api;
   else root.WWHD = api;
