@@ -218,7 +218,19 @@
     return true;
   }
 
+  // Newer saves end with a footer: "WSTB", u32 block length, u32 version, u32 CRC of the block preceding the footer.
+  const FOOTER_SIZE = 16;
+  function footerBlock(buf) {
+    if (buf.length < FOOTER_SIZE) return null;
+    const dv = view(buf), f = buf.length - FOOTER_SIZE;
+    if (dv.getUint32(f) !== 0x57535442) return null;
+    const len = dv.getUint32(f + 4);
+    return len <= f ? [f - len, f] : null;
+  }
+
   function blockCrc(buf) {
+    const fb = footerBlock(buf);
+    if (fb) return crc32(buf.subarray(fb[0], fb[1]));
     const block = buf.slice(BLOCK_START, BLOCK_START + BLOCK_SIZE);
     for (let i = 0; i < SLOT_COUNT; i++) {
       const o = NAMES_IN_BLOCK + i * NAME_STRIDE, keep = readName(buf, i).length + 1;
